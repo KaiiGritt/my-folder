@@ -98,9 +98,7 @@ const HomePage = () => {
       </div>
 
       {/* Movie Modal */}
-      {selectedMovie && (
-        <MovieModal movie={selectedMovie} onClose={handleCloseModal} />
-      )}
+      <MovieModal movie={selectedMovie} isOpen={!!selectedMovie} onClose={handleCloseModal} />
     </div>
   );
 };
