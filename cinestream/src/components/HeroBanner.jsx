@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback } from 'react';
 import { FiPlay, FiInfo } from 'react-icons/fi';
 import { getImageUrl } from '../services/tmdb';
 
@@ -7,147 +6,183 @@ const HeroBanner = ({ movies, onMovieSelect }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentMovie = movies?.[currentIndex];
 
-  // Auto-cycle (only first 5 movies)
   useEffect(() => {
     if (!movies?.length) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % Math.min(movies.length, 5));
-    }, 9000);
+    }, 6000);
     return () => clearInterval(interval);
   }, [movies]);
 
+  const goToSlide = useCallback((index) => setCurrentIndex(index), []);
+
   if (!currentMovie) {
     return (
-      <div className="h-[70vh] md:h-[80vh] bg-[#0B0B0B] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+      <div className="relative w-full h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-white/20 border-t-red-500 rounded-full animate-spin" />
       </div>
     );
   }
 
-  return (
-    <section className="relative h-[70vh] md:h-[85vh] lg:h-[92vh] overflow-hidden">
-      {/* Background */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentIndex}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-          className="absolute inset-0"
-        >
-          <motion.img
-            src={getImageUrl(currentMovie.backdrop_path, 'backdrop', 'original')}
-            alt=""
-            initial={{ scale: 1.1 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 4, ease: 'easeOut' }}
-            className="w-full h-full object-cover object-center opacity-90"
-          />
-        </motion.div>
-      </AnimatePresence>
+  const title = currentMovie.title || currentMovie.name;
+  const year =
+    currentMovie.release_date?.split('-')[0] ||
+    currentMovie.first_air_date?.split('-')[0];
+  const rating = currentMovie.vote_average?.toFixed(1);
 
-      {/* Soft Apple-style gradients */}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent md:from-black/80 md:via-black/30" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 md:from-black/70 md:to-black/10" />
+  return (
+    <section className="relative w-full h-screen overflow-hidden">
+      {/* Desktop Backdrop */}
+      <div
+        className="hidden sm:block absolute inset-0 w-full h-full bg-cover bg-center z-0"
+        style={{
+          backgroundImage: `url(${getImageUrl(
+            currentMovie.backdrop_path,
+            'backdrop',
+            'original'
+          )})`,
+        }}
+      />
+      {/* Mobile Poster */}
+      <div
+        className="sm:hidden absolute inset-0 w-full h-full bg-cover bg-top z-0"
+        style={{
+          backgroundImage: `url(${getImageUrl(
+            currentMovie.poster_path,
+            'poster',
+            'large'
+          )})`,
+        }}
+      />
+
+      {/* Gradients */}
+      {/* Mobile: Strong bottom gradient */}
+      <div
+        className="sm:hidden absolute inset-0 z-10 pointer-events-none"
+        style={{
+          background: 'linear-gradient(to top, #0a0a0f 0%, #0a0a0f 10%, rgba(10,10,15,0.9) 25%, rgba(10,10,15,0.4) 50%, transparent 70%)'
+        }}
+      />
+      {/* Desktop: Bottom + Left gradients */}
+      <div
+        className="hidden sm:block absolute inset-0 z-10 pointer-events-none"
+        style={{
+          background: 'linear-gradient(to top, #0a0a0f 0%, #0a0a0f 5%, transparent 35%)'
+        }}
+      />
+      <div
+        className="hidden sm:block absolute inset-0 z-10 pointer-events-none"
+        style={{
+          background: 'linear-gradient(to right, #0a0a0f 0%, rgba(10,10,15,0.85) 25%, rgba(10,10,15,0.4) 45%, transparent 65%)'
+        }}
+      />
 
       {/* Content */}
-      <div className="absolute inset-0 flex items-end md:items-center pb-20 md:pb-0">
-        <div className="max-w-[1800px] mx-auto w-full" style={{ padding: '0 var(--container-padding)' }}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
-              className="max-w-xl md:max-w-2xl"
-            >
-              {/* Animated Title */}
-              <motion.h1
-                className="text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-3 md:mb-4 leading-tight drop-shadow-2xl"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.8, ease: "easeOut" }}
-              >
-                {currentMovie.title || currentMovie.name}
-              </motion.h1>
+      {/* Mobile: Bottom aligned | Desktop: Center-left aligned */}
+      <div className="absolute inset-0 z-20 flex items-end sm:items-center">
+        <div className="w-full pb-28 sm:pb-0" style={{ paddingLeft: 'var(--container-padding)', paddingRight: 'var(--container-padding)' }}>
+          <div className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl">
 
-              {/* Animated Meta */}
-              <motion.div
-                className="flex flex-wrap items-center gap-2 md:gap-3 mb-4 md:mb-6 text-xs md:text-sm font-medium text-gray-200"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-              >
-                {currentMovie.release_date && (
-                  <span className="bg-white/10 px-2.5 py-1 md:px-3 rounded-full backdrop-blur-sm">
-                    {currentMovie.release_date.split('-')[0]}
-                  </span>
-                )}
-                <span className="bg-red-500/20 text-red-300 px-2.5 py-1 md:px-3 rounded-full backdrop-blur-sm border border-red-500/30 font-semibold">
-                  HD
+            {/* Label */}
+            <div className="flex items-center gap-2 mb-4 sm:mb-5">
+              <span className="text-red-500 text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+                Featured
+              </span>
+              <span className="w-1 h-1 bg-zinc-500 rounded-full" />
+              <span className="text-zinc-400 text-[11px] sm:text-xs">
+                #{currentIndex + 1} Trending
+              </span>
+            </div>
+
+            {/* Title */}
+            <h1 className="text-white text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] mb-4 sm:mb-5">
+              {title}
+            </h1>
+
+            {/* Meta Info */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
+              {rating && (
+                <span className="inline-flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 text-xs font-semibold px-3 py-1.5 rounded">
+                  ★ {rating}
                 </span>
-                {currentMovie.vote_average > 0 && (
-                  <span className="bg-yellow-500/20 text-yellow-300 px-2.5 py-1 md:px-3 rounded-full backdrop-blur-sm border border-yellow-500/30 font-semibold">
-                    ★ {currentMovie.vote_average.toFixed(1)}
-                  </span>
-                )}
-              </motion.div>
+              )}
+              {year && (
+                <span className="text-zinc-300 text-xs bg-white/10 px-3 py-1.5 rounded">
+                  {year}
+                </span>
+              )}
+              <span className="text-white text-[10px] font-bold bg-white/20 px-2 py-1 rounded border border-white/30">
+                HD
+              </span>
+            </div>
 
-              {/* Animated Description - Hidden on very small screens */}
-              <motion.p
-                className="hidden sm:block text-gray-100 text-sm md:text-base lg:text-lg max-w-xl md:max-w-2xl mb-6 md:mb-8 opacity-95 leading-relaxed line-clamp-2 md:line-clamp-3 font-light"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7, duration: 0.6 }}
+            {/* Description */}
+            <p className="text-zinc-300 text-sm sm:text-base leading-relaxed mb-6 sm:mb-8 line-clamp-2 sm:line-clamp-3 max-w-md sm:max-w-lg">
+              {currentMovie.overview}
+            </p>
+
+            {/* Buttons - Consistent styling with proper centering */}
+            <div className="flex items-center gap-3 sm:gap-4 ml-1">
+              <button
+                onClick={() => onMovieSelect?.(currentMovie)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  height: '48px',
+                  padding: '0 28px',
+                  backgroundColor: 'white',
+                  color: 'black',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+                className="hover:bg-zinc-200 transition-colors"
               >
-                {currentMovie.overview}
-              </motion.p>
-
-              {/* Buttons */}
-              <motion.div
-                className="flex items-center gap-2 md:gap-3"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8, duration: 0.6 }}
+                <FiPlay style={{ width: '20px', height: '20px', fill: 'black' }} />
+                <span>Play</span>
+              </button>
+              <button
+                onClick={() => onMovieSelect?.(currentMovie)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  height: '48px',
+                  padding: '0 28px',
+                  backgroundColor: 'rgba(82, 82, 91, 0.7)',
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+                className="hover:bg-zinc-600/80 transition-colors"
               >
-                <motion.button
-                  onClick={() => onMovieSelect?.(currentMovie)}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="btn-glass"
-                >
-                  <FiPlay className="w-4 h-4" />
-                  <span>Play</span>
-                </motion.button>
-
-                <motion.button
-                  onClick={() => onMovieSelect?.(currentMovie)}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="btn-glass-secondary"
-                >
-                  <FiInfo className="w-4 h-4" />
-                  <span>Info</span>
-                </motion.button>
-              </motion.div>
-            </motion.div>
-          </AnimatePresence>
+                <FiInfo style={{ width: '20px', height: '20px' }} />
+                <span>More Info</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Indicators - Repositioned for mobile */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:bottom-10 md:left-auto md:right-8 md:translate-x-0 flex items-center gap-2">
+      {/* Slide Indicators */}
+      <div className="absolute bottom-8 flex items-center gap-2 z-20" style={{ right: 'var(--container-padding)' }}>
         {movies?.slice(0, 5).map((_, index) => (
           <button
             key={index}
-            onClick={() => setCurrentIndex(index)}
-            aria-label={`Go to slide ${index + 1}`}
-            className={`h-1 md:h-[3px] rounded-full transition-all duration-300 ${
+            onClick={() => goToSlide(index)}
+            aria-label={`Slide ${index + 1}`}
+            className={`h-1 rounded-full transition-all duration-300 ${
               index === currentIndex
-                ? 'bg-white w-6 md:w-8'
-                : 'bg-white/40 w-2 md:w-3'
+                ? 'w-8 bg-white'
+                : 'w-2 bg-white/40 hover:bg-white/60'
             }`}
           />
         ))}

@@ -5,33 +5,20 @@ import RowCarousel from '../components/RowCarousel';
 import MovieModal from '../components/MovieModal';
 
 const HomePage = () => {
-  const [data, setData] = useState({
-    featured: [],
-    trending: [],
-    nowPlaying: [],
-    popular: [],
-    topRated: [],
-    upcoming: [],
-    popularTv: [],
-    topRatedTv: [],
-  });
+  const [trendingMovies, setTrendingMovies] = useState([]);
+  const [popularMovies, setPopularMovies] = useState([]);
+  const [topRatedMovies, setTopRatedMovies] = useState([]);
+  const [upcomingMovies, setUpcomingMovies] = useState([]);
+  const [popularTV, setPopularTV] = useState([]);
+  const [topRatedTV, setTopRatedTV] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [
-          trendingRes,
-          nowPlayingRes,
-          popularRes,
-          topRatedRes,
-          upcomingRes,
-          popularTvRes,
-          topRatedTvRes,
-        ] = await Promise.all([
-          movieApi.getTrending('week'),
-          movieApi.getNowPlaying(),
+        const [trending, popular, topRated, upcoming, tvPopular, tvTopRated] = await Promise.all([
+          movieApi.getTrending(),
           movieApi.getPopular(),
           movieApi.getTopRated(),
           movieApi.getUpcoming(),
@@ -39,23 +26,14 @@ const HomePage = () => {
           tvApi.getTopRated(),
         ]);
 
-        // Get details for featured movies
-        const featuredMovies = await Promise.all(
-          trendingRes.results.slice(0, 5).map((m) => movieApi.getDetails(m.id))
-        );
-
-        setData({
-          featured: featuredMovies,
-          trending: trendingRes.results,
-          nowPlaying: nowPlayingRes.results,
-          popular: popularRes.results,
-          topRated: topRatedRes.results,
-          upcoming: upcomingRes.results,
-          popularTv: popularTvRes.results.map((tv) => ({ ...tv, media_type: 'tv' })),
-          topRatedTv: topRatedTvRes.results.map((tv) => ({ ...tv, media_type: 'tv' })),
-        });
+        setTrendingMovies(trending.results || []);
+        setPopularMovies(popular.results || []);
+        setTopRatedMovies(topRated.results || []);
+        setUpcomingMovies(upcoming.results || []);
+        setPopularTV(tvPopular.results || []);
+        setTopRatedTV(tvTopRated.results || []);
       } catch (error) {
-        console.error('Failed to fetch data:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
@@ -64,64 +42,65 @@ const HomePage = () => {
     fetchData();
   }, []);
 
+  const handleMovieSelect = (movie) => {
+    setSelectedMovie(movie);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedMovie(null);
+  };
+
   if (loading) {
     return (
-      <div className="h-screen bg-[#141414] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="w-12 h-12 border-2 border-white/20 border-t-red-500 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="bg-[#141414] min-h-screen">
-      {/* Hero */}
-      <HeroBanner movies={data.featured} onMovieSelect={setSelectedMovie} />
+    <div className="min-h-screen bg-[#0a0a0f]">
+      {/* Hero Banner */}
+      <HeroBanner movies={trendingMovies} onMovieSelect={handleMovieSelect} />
 
-      {/* Content Rows */}
-      <div className="relative z-10 mt-4 md:-mt-24 pt-8 md:pt-12 pb-16">
+      {/* Movie Rows */}
+      <div className="relative z-10 -mt-20 sm:-mt-32">
         <RowCarousel
           title="Trending Now"
-          movies={data.trending}
-          onMovieSelect={setSelectedMovie}
+          movies={trendingMovies}
+          onMovieSelect={handleMovieSelect}
         />
         <RowCarousel
-          title="Now Playing"
-          movies={data.nowPlaying}
-          onMovieSelect={setSelectedMovie}
+          title="Popular Movies"
+          movies={popularMovies}
+          onMovieSelect={handleMovieSelect}
         />
         <RowCarousel
-          title="Popular on CineStream"
-          movies={data.popular}
-          onMovieSelect={setSelectedMovie}
-        />
-        <RowCarousel
-          title="Top Rated"
-          movies={data.topRated}
-          onMovieSelect={setSelectedMovie}
+          title="Top Rated Movies"
+          movies={topRatedMovies}
+          onMovieSelect={handleMovieSelect}
         />
         <RowCarousel
           title="Coming Soon"
-          movies={data.upcoming}
-          onMovieSelect={setSelectedMovie}
+          movies={upcomingMovies}
+          onMovieSelect={handleMovieSelect}
         />
         <RowCarousel
           title="Popular TV Shows"
-          movies={data.popularTv}
-          onMovieSelect={setSelectedMovie}
+          movies={popularTV.map(show => ({ ...show, media_type: 'tv' }))}
+          onMovieSelect={handleMovieSelect}
         />
         <RowCarousel
           title="Top Rated TV Shows"
-          movies={data.topRatedTv}
-          onMovieSelect={setSelectedMovie}
+          movies={topRatedTV.map(show => ({ ...show, media_type: 'tv' }))}
+          onMovieSelect={handleMovieSelect}
         />
       </div>
 
-      {/* Modal */}
-      <MovieModal
-        movie={selectedMovie}
-        isOpen={!!selectedMovie}
-        onClose={() => setSelectedMovie(null)}
-      />
+      {/* Movie Modal */}
+      {selectedMovie && (
+        <MovieModal movie={selectedMovie} onClose={handleCloseModal} />
+      )}
     </div>
   );
 };

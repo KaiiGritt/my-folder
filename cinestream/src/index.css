@@ -559,21 +559,33 @@ img {
   --spacing-2xl: 3rem;     /* 48px */
   --spacing-3xl: 4rem;     /* 64px */
 
-  --container-padding: 1rem;
+  --container-padding: 1.25rem;  /* 20px on mobile */
   --section-gap: 2.5rem;
 }
 
 @media (min-width: 640px) {
   :root {
-    --container-padding: 1.5rem;
+    --container-padding: 2rem;   /* 32px on small tablets */
     --section-gap: 3rem;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --container-padding: 2.5rem; /* 40px on tablets */
   }
 }
 
 @media (min-width: 1024px) {
   :root {
-    --container-padding: 2rem;
+    --container-padding: 3rem;   /* 48px on desktop */
     --section-gap: 3.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --container-padding: 4rem;   /* 64px on large screens */
   }
 }
 

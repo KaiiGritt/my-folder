@@ -63,9 +63,12 @@ const RowCarousel = ({ title, movies, onMovieSelect }) => {
         <div
           ref={rowRef}
           onScroll={handleScroll}
-          className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide py-4"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', padding: '1rem var(--container-padding)' }}
+          className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', paddingTop: '1rem', paddingBottom: '1rem' }}
         >
+          {/* Left spacer */}
+          <div style={{ paddingLeft: 'var(--container-padding)', flexShrink: 0 }} />
+
           {movies.map((movie) => (
             <MovieCard
               key={movie.id}
@@ -73,6 +76,9 @@ const RowCarousel = ({ title, movies, onMovieSelect }) => {
               onSelect={onMovieSelect}
             />
           ))}
+
+          {/* Right spacer */}
+          <div style={{ paddingRight: 'var(--container-padding)', flexShrink: 0 }} />
         </div>
       </div>
     </section>

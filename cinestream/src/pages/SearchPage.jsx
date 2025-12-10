@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiFilter, FiX, FiLoader } from 'react-icons/fi';
-import { searchApi, getImageUrl } from '../services/tmdb';
+import { motion } from 'framer-motion';
+import { FiX, FiSearch } from 'react-icons/fi';
+import { searchApi } from '../services/tmdb';
+import MovieCard from '../components/MovieCard';
 import MovieModal from '../components/MovieModal';
 
 const SearchPage = () => {
@@ -16,10 +17,9 @@ const SearchPage = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalResults, setTotalResults] = useState(0);
   const [selectedMovie, setSelectedMovie] = useState(null);
-  const [filter, setFilter] = useState('all'); // all, movie, tv, person
-  const [showFilters, setShowFilters] = useState(false);
+  const [filter, setFilter] = useState('all');
 
-  const observerRef = useRef(null);
+  const inputRef = useRef(null);
   const loadMoreRef = useRef(null);
 
   // Fetch search results
@@ -32,9 +32,11 @@ const SearchPage = () => {
     setLoading(true);
     try {
       const data = await searchApi.multiSearch(searchQuery, pageNum);
-      const filteredResults = filter === 'all'
-        ? data.results
-        : data.results.filter(item => item.media_type === filter);
+      let filteredResults = data.results.filter(item => item.media_type !== 'person');
+
+      if (filter !== 'all') {
+        filteredResults = filteredResults.filter(item => item.media_type === filter);
+      }
 
       setResults(prev => append ? [...prev, ...filteredResults] : filteredResults);
       setTotalPages(data.total_pages);
@@ -67,7 +69,7 @@ const SearchPage = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !loading && page < totalPages) {
+        if (entries[0].isIntersecting && !loading && page < totalPages && query) {
           setPage(prev => prev + 1);
           fetchResults(query, page + 1, true);
         }
@@ -79,8 +81,6 @@ const SearchPage = () => {
       observer.observe(loadMoreRef.current);
     }
 
-    observerRef.current = observer;
-
     return () => observer.disconnect();
   }, [loading, page, totalPages, query, fetchResults]);
 
@@ -90,64 +90,33 @@ const SearchPage = () => {
       setPage(1);
       fetchResults(query);
     }
-  }, [filter]);
+  }, [filter, query, fetchResults]);
 
   const filterOptions = [
     { value: 'all', label: 'All' },
     { value: 'movie', label: 'Movies' },
     { value: 'tv', label: 'TV Shows' },
-    { value: 'person', label: 'People' },
   ];
 
-  const getItemTitle = (item) => {
-    return item.title || item.name;
-  };
-
-  const getItemImage = (item) => {
-    if (item.media_type === 'person') {
-      return item.profile_path
-        ? getImageUrl(item.profile_path, 'profile', 'medium')
-        : '/placeholder-avatar.jpg';
-    }
-    return item.poster_path
-      ? getImageUrl(item.poster_path, 'poster', 'medium')
-      : '/placeholder-poster.jpg';
-  };
-
-  const getItemSubtitle = (item) => {
-    if (item.media_type === 'person') {
-      return item.known_for_department;
-    }
-    return (
-      item.release_date?.split('-')[0] ||
-      item.first_air_date?.split('-')[0] ||
-      'N/A'
-    );
-  };
-
   return (
-    <div className="min-h-screen pt-20 md:pt-24 pb-12 max-w-7xl mx-auto" style={{ padding: 'var(--container-padding)' }}>
-      {/* Search Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 mt-16 md:mt-20">
-          Search
-        </h1>
+    <div className="min-h-screen bg-[#0a0a0f] pb-16">
+      <div style={{ padding: '0 var(--container-padding)' }}>
+        {/* Header */}
+        <div className="mb-8" style={{ paddingTop: '120px' }}>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-6">
+            Search
+          </h1>
 
-        {/* Search Form */}
-        <form onSubmit={handleSearch} className="relative mb-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <FiSearch className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 md:w-5 h-4 md:h-5 text-gray-400" />
+          {/* Search Form */}
+          <form onSubmit={handleSearch} className="mb-6">
+            <div className="relative max-w-2xl">
               <input
+                ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search movies, TV shows..."
-                className="w-full pl-10 md:pl-12 pr-10 py-3 md:py-4 rounded-xl glass-strong text-white text-sm md:text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
+                placeholder="Search movies and TV shows..."
+                className="w-full h-12 sm:h-14 px-4 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-all"
               />
               {query && (
                 <button
@@ -155,177 +124,117 @@ const SearchPage = () => {
                   onClick={() => {
                     setQuery('');
                     setResults([]);
+                    setTotalResults(0);
+                    inputRef.current?.focus();
                   }}
-                  className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-zinc-700 hover:bg-zinc-600 text-zinc-400 hover:text-white transition-colors"
                 >
-                  <FiX className="w-4 md:w-5 h-4 md:h-5" />
+                  <FiX className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="btn-glass flex-1 sm:flex-none"
-              >
-                Search
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowFilters(!showFilters)}
-                className={showFilters ? 'btn-icon' : 'btn-icon-secondary'}
-              >
-                <FiFilter className="w-4 md:w-5 h-4 md:h-5" />
-              </button>
-            </div>
-          </div>
+          </form>
 
           {/* Filters */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-4 flex flex-wrap gap-2"
+          <div className="flex flex-wrap gap-2 mb-6">
+            {filterOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setFilter(option.value)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '36px',
+                  padding: '0 16px',
+                  backgroundColor: filter === option.value ? 'white' : 'rgba(63, 63, 70, 0.5)',
+                  color: filter === option.value ? 'black' : 'rgb(161, 161, 170)',
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  borderRadius: '9999px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                className="hover:opacity-80"
               >
-                {filterOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setFilter(option.value)}
-                    className={filter === option.value ? 'btn-glass' : 'btn-glass-secondary'}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </form>
-
-        {/* Results Count */}
-        {totalResults > 0 && (
-          <p className="text-gray-400">
-            Found <span className="text-neon-aqua font-semibold">{totalResults}</span> results
-            {query && (
-              <>
-                {' '}for "<span className="text-white">{query}</span>"
-              </>
-            )}
-          </p>
-        )}
-      </motion.div>
-
-      {/* Results Grid */}
-      {results.length > 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 lg:gap-6"
-        >
-          {results.map((item, index) => (
-            <motion.div
-              key={`${item.id}-${index}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03 }}
-              onClick={() => item.media_type !== 'person' && setSelectedMovie(item)}
-              className="group cursor-pointer"
-            >
-              <div className="relative rounded-xl overflow-hidden aspect-[2/3] mb-3">
-                {/* Image */}
-                <img
-                  src={getItemImage(item)}
-                  alt={getItemTitle(item)}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  loading="lazy"
-                />
-
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-deep-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                {/* Media Type Badge */}
-                <div className="absolute top-2 left-2">
-                  <span
-                    className={`px-2 py-1 text-xs font-semibold rounded-md backdrop-blur-sm ${
-                      item.media_type === 'movie'
-                        ? 'bg-neon-aqua/80 text-deep-black'
-                        : item.media_type === 'tv'
-                        ? 'bg-accent-pink/80 text-white'
-                        : 'bg-soft-blue/80 text-white'
-                    }`}
-                  >
-                    {item.media_type === 'tv' ? 'TV' : item.media_type === 'person' ? 'Person' : 'Movie'}
-                  </span>
-                </div>
-
-                {/* Rating */}
-                {item.vote_average > 0 && (
-                  <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-deep-black/80 backdrop-blur-sm">
-                    <span className="text-yellow-400 text-xs">★</span>
-                    <span className="text-white text-xs font-semibold">
-                      {item.vote_average.toFixed(1)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Hover Info */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
-                  {item.overview && (
-                    <p className="text-gray-300 text-xs line-clamp-3">
-                      {item.overview}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Title */}
-              <h3 className="text-white font-medium text-sm truncate group-hover:text-neon-aqua transition-colors">
-                {getItemTitle(item)}
-              </h3>
-              <p className="text-gray-400 text-xs mt-1">{getItemSubtitle(item)}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-      ) : !loading && query ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center py-20"
-        >
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-midnight-mid to-midnight-end flex items-center justify-center mb-6">
-            <FiSearch className="w-10 h-10 text-gray-500" />
+                {option.label}
+              </button>
+            ))}
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">No results found</h3>
-          <p className="text-gray-400 text-center max-w-md">
-            We couldn't find anything matching "{query}". Try different keywords or check for typos.
-          </p>
-        </motion.div>
-      ) : !loading && !query ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center py-20"
-        >
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-neon-aqua/20 to-soft-blue/20 flex items-center justify-center mb-6">
-            <FiSearch className="w-10 h-10 text-neon-aqua" />
-          </div>
-          <h3 className="text-xl font-semibold text-white mb-2">Start searching</h3>
-          <p className="text-gray-400 text-center max-w-md">
-            Enter a movie title, TV show name, or person to find what you're looking for.
-          </p>
-        </motion.div>
-      ) : null}
 
-      {/* Loading Spinner */}
-      {loading && (
-        <div className="flex justify-center py-12">
-          <FiLoader className="w-8 h-8 text-neon-aqua animate-spin" />
+          {/* Results Count */}
+          {totalResults > 0 && (
+            <p className="text-zinc-400 text-sm">
+              Found <span className="text-white font-medium">{totalResults}</span> results
+              {query && <> for "<span className="text-white">{query}</span>"</>}
+            </p>
+          )}
         </div>
-      )}
 
-      {/* Infinite Scroll Trigger */}
-      <div ref={loadMoreRef} className="h-10" />
+        {/* Results Grid */}
+        {results.length > 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4 md:gap-5"
+          >
+            {results.map((item, index) => (
+              <motion.div
+                key={`${item.id}-${index}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(index * 0.02, 0.3) }}
+              >
+                <MovieCard
+                  movie={item}
+                  onSelect={setSelectedMovie}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : !loading && query ? (
+          /* No Results */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-20"
+          >
+            <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-6">
+              <FiSearch className="w-8 h-8 text-zinc-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">No results found</h3>
+            <p className="text-zinc-400 text-center max-w-md">
+              We couldn't find anything for "{query}". Try different keywords.
+            </p>
+          </motion.div>
+        ) : !loading && !query ? (
+          /* Empty State */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-20"
+          >
+            <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-6">
+              <FiSearch className="w-8 h-8 text-zinc-500" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Start searching</h3>
+            <p className="text-zinc-400 text-center max-w-md">
+              Search for your favorite movies and TV shows
+            </p>
+          </motion.div>
+        ) : null}
+
+        {/* Loading */}
+        {loading && (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 border-2 border-zinc-700 border-t-red-500 rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Infinite Scroll Trigger */}
+        <div ref={loadMoreRef} className="h-10" />
+      </div>
 
       {/* Movie Modal */}
       <MovieModal
